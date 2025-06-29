@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coffee Ratio Calculator</title>
+    <style>
+        html {
+            max-width: 650px;
+            margin: 20px auto;
+            padding: 0 10px;
+            background-color: #ffeddb;
+            color: #6D3B07;
+            font-family: system-ui;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+
+        h1, h2, h3 {
+            line-height: 1.2;
+        }
+
+        a {
+            color: #C3873E;
+        }
+
+        .small-box input {
+            max-width: 60px;
+        }
+
+        .big-box input {
+            max-width: 150px;
+        }
+
+        input {
+            font-size: 18px;
+        }
+
+        .container {
+            padding: 15px;
+            border: 3px dotted #6d5b07;
+        }
+
+        /* Hide the arrows on number input fields for Chrome, Safari, Edge, Opera */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+
+        /* Hide the arrows on number input fields for Firefox */
+        input[type=number] {
+          -moz-appearance: textfield;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Coffee Ratio Calculator</h1>
+
+    <h2>Set Your Ratio</h2>
+
+    <p>Enter a value in <strong>one</strong> of the boxes below.</p>
+    
+    <div class="container">
+        <div class="small-box">
+            <input type="number" id="ratioGpl" placeholder="e.g. 70">
+            <label for="ratioGpl">grams of coffee per litre of water</label>
+        </div>
+
+        <p><em>OR</em></p>
+        
+        <div class="small-box">
+            <label for="ratioOneToX">1 :</label>
+            <input type="number" id="ratioOneToX" placeholder="e.g. 16">
+            <label for="ratioOneToX">:: coffee (g) : water (ml)</label>
+        </div>
+    </div>
+
+    <p>For french press and other immersion methods, I recommend 70g/L. For V60 and other percolation methods, I brew closer to 60g/L.</p>
+
+    <h2>Calculate</h2>
+    <p>Enter a value in either box. The other will be calculated automatically.</p>
+    <div class="container">
+        <div class="big-box">
+            <label for="coffeeGrams">Coffee (grams):</label>
+            <input type="number" id="coffeeGrams" placeholder="Grams of coffee">
+        </div>
+        <br>
+        <div class="big-box">
+            <label for="waterGrams">Water (ml):</label>
+            <input type="number" id="waterGrams" placeholder="ml of water">
+        </div>  
+    </div>
+
+    <p>
+        <footnote>Made by <a href="https://ponnekanti.net">Manav</a></footnote>
+    </p>
+
+    <script>
+        // --- DOM Element References ---
+        const ratioGplInput = document.getElementById('ratioGpl');
+        const ratioOneToXInput = document.getElementById('ratioOneToX');
+        const coffeeGramsInput = document.getElementById('coffeeGrams');
+        const waterGramsInput = document.getElementById('waterGrams');
+        
+        // --- State Variable ---
+        // This variable helps prevent an infinite loop when one input updates the other.
+        let isCalculating = false;
+
+        // --- Core Calculation Logic ---
+
+        /**
+         * Determines the currently active ratio type and value from the input fields.
+         * @returns {object|null} An object with {type, value} or null if no valid ratio is set.
+         */
+        function getActiveRatio() {
+            if (ratioGplInput.value) {
+                const value = parseFloat(ratioGplInput.value);
+                if (!isNaN(value) && value > 0) {
+                    return { type: 'gpl', value: value };
+                }
+            }
+            if (ratioOneToXInput.value) {
+                const value = parseFloat(ratioOneToXInput.value);
+                if (!isNaN(value) && value > 0) {
+                    return { type: 'oneToX', value: value };
+                }
+            }
+            return null; // No valid ratio found
+        }
+        
+        /**
+         * Calculates the water amount based on the coffee amount and current ratio.
+         */
+        function calculateWater() {
+            if (isCalculating) return;
+            isCalculating = true;
+
+            const activeRatio = getActiveRatio();
+            const coffeeGrams = parseFloat(coffeeGramsInput.value);
+
+            if (!activeRatio || isNaN(coffeeGrams)) {
+                waterGramsInput.value = ''; // Clear water input if inputs are invalid
+                isCalculating = false;
+                return;
+            }
+
+            let waterAmount = 0;
+            if (activeRatio.type === 'gpl') {
+                // water = coffee * (1000 / ratioValue)
+                waterAmount = coffeeGrams * (1000 / activeRatio.value);
+            } else { // ratioType === 'oneToX'
+                // water = coffee * ratioValue
+                waterAmount = coffeeGrams * activeRatio.value;
+            }
+
+            waterGramsInput.value = waterAmount.toFixed(1);
+            isCalculating = false;
+        }
+        
+        /**
+         * Calculates the coffee amount based on the water amount and current ratio.
+         */
+        function calculateCoffee() {
+            if (isCalculating) return;
+            isCalculating = true;
+
+            const activeRatio = getActiveRatio();
+            const waterGrams = parseFloat(waterGramsInput.value);
+
+            if (!activeRatio || isNaN(waterGrams)) {
+                coffeeGramsInput.value = ''; // Clear coffee input if inputs are invalid
+                isCalculating = false;
+                return;
+            }
+
+            let coffeeAmount = 0;
+            if (activeRatio.type === 'gpl') {
+                // coffee = water * (ratioValue / 1000)
+                coffeeAmount = waterGrams * (activeRatio.value / 1000);
+            } else { // ratioType === 'oneToX'
+                // coffee = water / ratioValue
+                coffeeAmount = waterGrams / activeRatio.value;
+            }
+            
+            coffeeGramsInput.value = coffeeAmount.toFixed(1);
+            isCalculating = false;
+        }
+
+        /**
+         * A handler to recalculate brew amounts when the ratio is changed.
+         */
+        function handleRatioChange() {
+            // Prioritize keeping the coffee amount fixed and recalculating water.
+            if (coffeeGramsInput.value) {
+                calculateWater();
+            } else if (waterGramsInput.value) {
+                // If coffee is empty, recalculate coffee from water amount.
+                calculateCoffee();
+            }
+        }
+
+        // --- Event Listeners ---
+        
+        // When typing in a ratio box, clear the other one.
+        ratioGplInput.addEventListener('input', () => {
+            if (ratioGplInput.value !== '') {
+                ratioOneToXInput.value = '';
+            }
+            handleRatioChange();
+        });
+
+        ratioOneToXInput.addEventListener('input', () => {
+             if (ratioOneToXInput.value !== '') {
+                ratioGplInput.value = '';
+            }
+            handleRatioChange();
+        });
+        
+        // Listen for input on the calculation fields.
+        coffeeGramsInput.addEventListener('input', calculateWater);
+        waterGramsInput.addEventListener('input', calculateCoffee);
+
+    </script>
+</body>
+</html>
